@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Mobile App",
+    "slug": "mobile-app",
+    "scheme": "mobile-app",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#101828"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
