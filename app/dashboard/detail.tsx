@@ -3,6 +3,9 @@ import { useEffect, useRef } from 'react';
 
 import { MealThumbnail } from '@/components/illustrations/meal-thumbnail';
 import { ScreenState } from '@/components/screen-state';
+import { TopbarMenu } from '@/components/topbar-menu';
+import { useUIStore } from '@/store/ui-store';
+import { DashboardSkeleton } from '@/features/dashboard/components/dashboard-skeleton';
 import { useDashboardOverview } from '@/features/dashboard/hooks/use-dashboard-overview';
 import { Badge } from '@/ui/badge';
 import { Button } from '@/ui/button';
@@ -18,6 +21,7 @@ const accentColorMap = {
 
 const DashboardDetailScreen = () => {
   const { data, error, execute, loading } = useDashboardOverview();
+  const openSidebar = useUIStore((state) => state.openSidebar);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(14)).current;
 
@@ -42,11 +46,15 @@ const DashboardDetailScreen = () => {
         isEmpty={!loading && !error && !data}
         emptyTitle="Chưa có dữ liệu dashboard"
         emptyDescription="Phần tổng quan sẽ xuất hiện ở đây sau khi đồng bộ xong."
+        skeleton={<DashboardSkeleton />}
       >
         {data ? (
           <Animated.View style={{ flex: 1, opacity, transform: [{ translateY }] }}>
             <ScrollView contentContainerStyle={{ gap: 24, paddingBottom: 36 }} showsVerticalScrollIndicator={false}>
               <View className="gap-4 px-1 pb-1">
+                <View className="flex-row items-center justify-between">
+                  <TopbarMenu onPress={openSidebar} />
+                </View>
                 <Badge label="Dashboard chuyên sâu" variant="primary" />
                 <View className="gap-2">
                   <Text className="max-w-[280px]" variant="heading-xl">Chào buổi sáng, {data.greetingName}!</Text>

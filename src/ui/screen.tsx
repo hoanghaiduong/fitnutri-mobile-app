@@ -2,7 +2,9 @@ import { type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { cn } from '@/lib/cn';
+import { toRgb } from '@/lib/color';
 
 type ScreenProps = {
   children: ReactNode;
@@ -19,6 +21,7 @@ export const Screen = ({
   keyboardAware = false,
   scrollable = false,
 }: ScreenProps) => {
+  const { tokens } = useAppTheme();
   const content = scrollable ? (
     <ScrollView
       contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingVertical: 20 }}
@@ -44,7 +47,7 @@ export const Screen = ({
   );
 
   return (
-    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1, backgroundColor: toRgb(tokens.colors.background) }}>
       <View className={cn('flex-1 bg-background', className)}>{wrappedContent}</View>
     </SafeAreaView>
   );

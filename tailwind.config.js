@@ -6,6 +6,9 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter_400Regular', 'sans-serif'],
+      },
       colors: {
         border: 'rgb(var(--color-border) / <alpha-value>)',
         input: 'rgb(var(--color-input) / <alpha-value>)',
@@ -44,13 +47,13 @@ module.exports = {
         hairline: hairlineWidth()
       },
       fontSize: {
-        'heading-xl': ['32px', { lineHeight: '40px', fontWeight: '700', letterSpacing: '-0.6px' }],
-        'heading-lg': ['24px', { lineHeight: '32px', fontWeight: '700', letterSpacing: '-0.4px' }],
-        'heading-md': ['20px', { lineHeight: '28px', fontWeight: '600', letterSpacing: '-0.2px' }],
-        'body-lg': ['18px', { lineHeight: '28px', fontWeight: '400' }],
-        'body-md': ['16px', { lineHeight: '24px', fontWeight: '400' }],
-        'body-sm': ['14px', { lineHeight: '20px', fontWeight: '400' }],
-        caption: ['12px', { lineHeight: '16px', fontWeight: '500', letterSpacing: '0.2px' }]
+        'heading-xl': ['32px', { lineHeight: '40px', fontFamily: 'Inter_700Bold', letterSpacing: '-0.6px' }],
+        'heading-lg': ['24px', { lineHeight: '32px', fontFamily: 'Inter_700Bold', letterSpacing: '-0.4px' }],
+        'heading-md': ['20px', { lineHeight: '28px', fontFamily: 'Inter_600SemiBold', letterSpacing: '-0.2px' }],
+        'body-lg': ['18px', { lineHeight: '28px', fontFamily: 'Inter_400Regular' }],
+        'body-md': ['16px', { lineHeight: '24px', fontFamily: 'Inter_400Regular' }],
+        'body-sm': ['14px', { lineHeight: '20px', fontFamily: 'Inter_400Regular' }],
+        caption: ['12px', { lineHeight: '16px', fontFamily: 'Inter_500Medium', letterSpacing: '0.2px' }]
       },
       boxShadow: {
         card: '0px 8px 24px rgba(15, 23, 42, 0.08)',

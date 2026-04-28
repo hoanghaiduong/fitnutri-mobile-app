@@ -2,6 +2,8 @@ import { View } from 'react-native';
 
 import { MealThumbnail } from '@/components/illustrations/meal-thumbnail';
 import { ScreenState } from '@/components/screen-state';
+import { TopbarMenu } from '@/components/topbar-menu';
+import { useUIStore } from '@/store/ui-store';
 import { useResultSummary } from '@/features/plans/hooks/use-result-summary';
 import { Badge } from '@/ui/badge';
 import { Button } from '@/ui/button';
@@ -11,6 +13,7 @@ import { Text } from '@/ui/text';
 
 const ResultSummaryScreen = () => {
   const { data, error, execute, loading } = useResultSummary();
+  const openSidebar = useUIStore((state) => state.openSidebar);
 
   return (
     <Screen scrollable>
@@ -27,6 +30,9 @@ const ResultSummaryScreen = () => {
       >
         {data ? (
           <View className="gap-6 pb-8">
+            <View className="mb-2 px-1">
+              <TopbarMenu onPress={openSidebar} />
+            </View>
             <View className="gap-3 px-1 pb-1">
               <Badge label="Kết quả đề xuất" variant="primary" />
               <View className="gap-2">

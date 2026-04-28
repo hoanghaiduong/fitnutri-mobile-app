@@ -13,19 +13,22 @@ export const ThemeToggle = () => {
 
   return (
     <View className="gap-3">
-      <Text variant="body-sm">Theme mode</Text>
+      <Text variant="body-sm">Giao diện ứng dụng</Text>
       <View className="flex-row flex-wrap gap-2">
-        {options.map((option) => (
-          <Button
-            key={option}
-            onPress={() => {
-              void setMode(option);
-            }}
-            size="sm"
-            title={option}
-            variant={mode === option ? 'primary' : 'secondary'}
-          />
-        ))}
+        {options.map((option) => {
+          const label = option === 'light' ? 'Sáng' : option === 'dark' ? 'Tối' : 'Hệ thống';
+          return (
+            <Button
+              key={option}
+              onPress={() => {
+                void setMode(option);
+              }}
+              size="sm"
+              title={label}
+              variant={mode === option ? 'primary' : 'secondary'}
+            />
+          );
+        })}
       </View>
     </View>
   );

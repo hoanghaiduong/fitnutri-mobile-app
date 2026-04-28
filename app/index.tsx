@@ -15,7 +15,7 @@ const IndexPage = () => {
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', gap: 12 }}>
-      <ActivityIndicator size="small" color="#2563EB" />
+      <ActivityIndicator size="small" color="#10B981" />
       <Text style={{ color: '#0F172A', fontSize: 16, fontWeight: '600' }}>Đang khởi động FitNutri AI...</Text>
     </View>
   );

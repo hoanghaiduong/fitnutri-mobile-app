@@ -2,7 +2,9 @@ import { Link } from 'expo-router';
 import { View } from 'react-native';
 
 import { ScreenState } from '@/components/screen-state';
+import { TopbarMenu } from '@/components/topbar-menu';
 import { ROUTES } from '@/constants/routes';
+import { useUIStore } from '@/store/ui-store';
 import { useMonthlyPlan } from '@/features/plans/hooks/use-monthly-plan';
 import { Button } from '@/ui/button';
 import { Card } from '@/ui/card';
@@ -13,6 +15,7 @@ const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 const MonthlyPlanScreen = () => {
   const { data, error, execute, loading } = useMonthlyPlan();
+  const openSidebar = useUIStore((state) => state.openSidebar);
   const planItems = data ?? [];
 
   return (
@@ -29,6 +32,9 @@ const MonthlyPlanScreen = () => {
         emptyDescription="Lịch luyện tập theo tháng sẽ xuất hiện ở đây sau khi được tạo."
       >
         <View className="gap-6 pb-8">
+          <View className="mb-2 px-1">
+            <TopbarMenu onPress={openSidebar} />
+          </View>
           <View className="overflow-hidden rounded-[28px] border border-primary/10 bg-primary/10 p-5">
             <View className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20" />
             <Text tone="primary" variant="caption">Lộ trình tháng</Text>

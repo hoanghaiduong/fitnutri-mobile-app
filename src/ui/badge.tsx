@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { View, type ViewProps } from 'react-native';
 
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { toRgba } from '@/lib/color';
@@ -6,13 +6,13 @@ import { Text } from '@/ui/text';
 
 type BadgeVariant = 'neutral' | 'primary' | 'success' | 'warning' | 'destructive';
 
-type BadgeProps = {
+type BadgeProps = ViewProps & {
   label: string;
   className?: string;
   variant?: BadgeVariant;
 };
 
-export const Badge = ({ label, variant = 'neutral' }: BadgeProps) => {
+export const Badge = ({ label, variant = 'neutral', style, ...props }: BadgeProps) => {
   const { isDark, tokens } = useAppTheme();
 
   const palette = {
@@ -41,19 +41,27 @@ export const Badge = ({ label, variant = 'neutral' }: BadgeProps) => {
       borderColor: toRgba(tokens.colors.destructive, isDark ? 0.28 : 0.18),
       textTone: 'destructive' as const,
     },
-  }[variant];
+  }[variant] || {
+    backgroundColor: toRgba(tokens.colors.secondary, isDark ? 0.9 : 0.96),
+    borderColor: toRgba(tokens.colors.border, isDark ? 0.55 : 0.75),
+    textTone: 'default' as const,
+  };
 
   return (
     <View
-      style={{
-        alignSelf: 'flex-start',
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: palette.borderColor,
-        backgroundColor: palette.backgroundColor,
-        paddingHorizontal: 11,
-        paddingVertical: 6,
-      }}
+      style={[
+        {
+          alignSelf: 'flex-start',
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: palette.borderColor,
+          backgroundColor: palette.backgroundColor,
+          paddingHorizontal: 11,
+          paddingVertical: 6,
+        },
+        style,
+      ]}
+      {...props}
     >
       <Text tone={palette.textTone} variant="caption">
         {label}

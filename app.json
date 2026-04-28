@@ -9,8 +9,26 @@
       "typedRoutes": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Cho phép $(PRODUCT_NAME) sử dụng Face ID."
+        }
+      ],
+     [
+        "expo-font",
+        {
+          "fonts": [
+            "./node_modules/@expo-google-fonts/inter/Inter_400Regular.ttf",
+            "./node_modules/@expo-google-fonts/inter/Inter_500Medium.ttf",
+            "./node_modules/@expo-google-fonts/inter/Inter_600SemiBold.ttf",
+            "./node_modules/@expo-google-fonts/inter/Inter_700Bold.ttf"
+          ]
+        }
+      ]
     ],
+    "jsEngine": "hermes",
     "ios": {
       "supportsTablet": true
     },

@@ -2,7 +2,17 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ROUTES } from '@/constants/routes';
@@ -10,11 +20,14 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import { toRgb, toRgba } from '@/lib/color';
 import { Text } from '@/ui/text';
 
-const CENTER_BUTTON_SIZE = 76;
-const CENTER_BUTTON_SLOT_SIZE = 96;
-const CENTER_NOTCH_SIZE = 86;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const TAB_SPRING = { damping: 14, stiffness: 380, mass: 0.5 };
+
+const CENTER_BUTTON_SIZE = 52;
+const CENTER_BUTTON_SLOT_SIZE = 68;
+const CENTER_NOTCH_SIZE = 62;
 const CENTER_NOTCH_VISIBLE_HEIGHT = CENTER_NOTCH_SIZE / 2;
-const CENTER_BUTTON_TOP_OFFSET = -30;
+const CENTER_BUTTON_TOP_OFFSET = -(CENTER_BUTTON_SIZE / 2);
 
 const getLabel = (options: BottomTabBarProps['descriptors'][string]['options'], fallback: string) => {
   if (typeof options.tabBarLabel === 'string') {
@@ -56,38 +69,66 @@ export const FloatingTabBar = ({ descriptors, navigation, state }: BottomTabBarP
       }
     };
 
+    const tabScale = useSharedValue(1);
+    const tabAnimStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: tabScale.value }],
+    }));
+
     return (
       <Pressable
         key={route.key}
         accessibilityRole="button"
         accessibilityState={focused ? { selected: true } : {}}
         onPress={onPress}
-        style={({ pressed }) => ({
-          alignItems: 'center',
-          flex: 1,
-          opacity: pressed ? 0.82 : 1,
-          paddingHorizontal: 4,
-        })}
+        onPressIn={() => { tabScale.value = withSpring(0.92, TAB_SPRING); }}
+        onPressOut={() => { tabScale.value = withSpring(1, TAB_SPRING); }}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
       >
-        <View style={{ alignItems: 'center', gap: 4 }}>
-          {options.tabBarIcon
-            ? options.tabBarIcon({
-                color,
-                focused,
-                size: focused ? 30 : 28,
-              })
-            : null}
+        <Animated.View style={[{ alignItems: 'center', gap: 3, width: '100%' }, tabAnimStyle]}>
+          {/* Pill glow behind active icon */}
+          <View
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: focused
+                ? toRgba(tokens.colors.primary, isDark ? 0.18 : 0.12)
+                : 'transparent',
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+            }}
+          >
+            {options.tabBarIcon
+              ? options.tabBarIcon({
+                  color,
+                  focused,
+                  size: 22,
+                })
+              : null}
+          </View>
           <Text
             variant="caption"
             style={{
               color,
-              fontSize: focused ? 13 : 12,
-              fontWeight: focused ? '700' : '600',
+              fontSize: 10,
+              fontWeight: focused ? '700' : '500',
+              textAlign: 'center',
             }}
+            numberOfLines={1}
           >
             {label}
           </Text>
-        </View>
+          {/* Active dot indicator */}
+          <View
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: focused ? activeColor : 'transparent',
+              marginTop: -1,
+            }}
+          />
+        </Animated.View>
       </Pressable>
     );
   };
@@ -105,7 +146,7 @@ export const FloatingTabBar = ({ descriptors, navigation, state }: BottomTabBarP
     >
       <View
         style={{
-          marginHorizontal: 18,
+          marginHorizontal: 16,
         }}
       >
         <View
@@ -128,13 +169,13 @@ export const FloatingTabBar = ({ descriptors, navigation, state }: BottomTabBarP
             }}
           >
             <View
-              style={{
-                backgroundColor: toRgba(tokens.colors.card, isDark ? 0.88 : 0.94),
-                minHeight: 104,
-                paddingBottom: 14,
-                paddingHorizontal: 18,
-                paddingTop: 32,
-              }}
+                style={{
+                  backgroundColor: toRgba(tokens.colors.card, isDark ? 0.88 : 0.94),
+                  minHeight: 70,
+                  paddingBottom: 12,
+                  paddingHorizontal: 12,
+                  paddingTop: 18,
+                }}
             >
               <View
                 style={{
@@ -203,47 +244,72 @@ export const FloatingTabBar = ({ descriptors, navigation, state }: BottomTabBarP
             zIndex: 10,
           }}
         >
-          <Pressable
-            accessibilityLabel="Mở nhanh dashboard chi tiết"
-            onPress={() => router.push(ROUTES.dashboardDetail)}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
-            })}
-          >
-            <View
-              style={{
-                alignItems: 'center',
-                backgroundColor: toRgb(tokens.colors.card),
-                borderColor: toRgba(tokens.colors.border, isDark ? 0.54 : 0.9),
-                borderRadius: CENTER_BUTTON_SIZE / 2,
-                borderWidth: 1,
-                height: CENTER_BUTTON_SIZE,
-                justifyContent: 'center',
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 12 },
-                shadowOpacity: isDark ? 0.3 : 0.14,
-                shadowRadius: 20,
-                width: CENTER_BUTTON_SIZE,
-                elevation: 16,
-              }}
-            >
-              <View
-                style={{
-                  alignItems: 'center',
-                  backgroundColor: toRgba(tokens.colors.primary, isDark ? 0.12 : 0.08),
-                  borderRadius: 22,
-                  height: 46,
-                  justifyContent: 'center',
-                  width: 46,
-                }}
-              >
-                <Ionicons color={activeColor} name="heart-outline" size={30} />
-              </View>
-            </View>
-          </Pressable>
+          <CenterButton router={router} activeColor={activeColor} tokens={tokens} isDark={isDark} />
         </View>
       </View>
     </View>
+  );
+};
+
+// Separated component so pulse animation doesn't re-render the entire tab bar
+const CenterButton = ({ router, activeColor, tokens, isDark }: any) => {
+  const pulseScale = useSharedValue(1);
+  const pressScale = useSharedValue(1);
+
+  useEffect(() => {
+    pulseScale.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      true,
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value * pressScale.value }],
+  }));
+
+  return (
+    <AnimatedPressable
+      accessibilityLabel="Mở nhanh dashboard chi tiết"
+      onPress={() => router.push(ROUTES.dashboardDetail)}
+      onPressIn={() => { pressScale.value = withSpring(0.92, TAB_SPRING); }}
+      onPressOut={() => { pressScale.value = withSpring(1, TAB_SPRING); }}
+      style={animStyle}
+    >
+      <View
+        style={{
+          alignItems: 'center',
+          backgroundColor: toRgb(tokens.colors.card),
+          borderColor: toRgba(tokens.colors.border, isDark ? 0.54 : 0.9),
+          borderRadius: CENTER_BUTTON_SIZE / 2,
+          borderWidth: 1,
+          height: CENTER_BUTTON_SIZE,
+          justifyContent: 'center',
+          shadowColor: '#0F172A',
+          shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: isDark ? 0.3 : 0.14,
+          shadowRadius: 20,
+          width: CENTER_BUTTON_SIZE,
+          elevation: 16,
+        }}
+      >
+        <View
+          style={{
+            alignItems: 'center',
+            backgroundColor: toRgba(tokens.colors.primary, isDark ? 0.12 : 0.08),
+            borderRadius: 18,
+            height: 38,
+            justifyContent: 'center',
+            width: 38,
+          }}
+        >
+          <Ionicons color={activeColor} name="sparkles" size={28} />
+        </View>
+      </View>
+    </AnimatedPressable>
   );
 };

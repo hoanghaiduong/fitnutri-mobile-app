@@ -12,6 +12,7 @@ type ScreenStateProps = {
   emptyTitle?: string;
   emptyDescription?: string;
   onRetry?: () => void;
+  skeleton?: ReactNode;
   children: ReactNode;
 };
 
@@ -24,9 +25,10 @@ export const ScreenState = ({
   loading = false,
   loadingLabel,
   onRetry,
+  skeleton,
 }: ScreenStateProps) => {
   if (loading) {
-    return <Loader label={loadingLabel} />;
+    return skeleton ? <>{skeleton}</> : <Loader label={loadingLabel} />;
   }
 
   if (error) {

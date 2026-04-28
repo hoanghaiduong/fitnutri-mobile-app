@@ -1,8 +1,10 @@
 import { Link } from 'expo-router';
-import { View } from 'react-native';
+import { FlatList, View } from 'react-native';
 
 import { ScreenState } from '@/components/screen-state';
+import { TopbarMenu } from '@/components/topbar-menu';
 import { ROUTES } from '@/constants/routes';
+import { useUIStore } from '@/store/ui-store';
 import { useWeeklyPlan } from '@/features/plans/hooks/use-weekly-plan';
 import { Button } from '@/ui/button';
 import { Card } from '@/ui/card';
@@ -18,10 +20,11 @@ const statusStyles = {
 
 const WeeklyPlanScreen = () => {
   const { data, error, execute, loading } = useWeeklyPlan();
+  const openSidebar = useUIStore((state) => state.openSidebar);
   const planItems = data ?? [];
 
   return (
-    <Screen scrollable>
+    <Screen>
       <ScreenState
         loading={loading}
         loadingLabel="Đang tải lịch tuần..."
@@ -33,30 +36,40 @@ const WeeklyPlanScreen = () => {
         emptyTitle="Chưa có lịch tuần"
         emptyDescription="Timeline luyện tập sẽ xuất hiện ở đây sau khi được tạo."
       >
-        <View className="gap-6 pb-8">
-          <View className="overflow-hidden rounded-[28px] border border-primary/10 bg-primary/10 p-5">
-            <View className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20" />
-            <Text tone="primary" variant="caption">Lộ trình tuần</Text>
-            <Text className="mt-1" variant="heading-lg">Giữ nhịp tập luyện ổn định</Text>
-            <Text className="mt-2" tone="muted" variant="body-sm">
-              Theo dõi từng buổi tập, ngày nghỉ và gợi ý AI để duy trì cường độ hợp lý suốt tuần.
-            </Text>
+        <FlatList
+          data={planItems}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 80 }}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <View className="gap-6 pb-6">
+              <View className="mb-2 px-1">
+                <TopbarMenu onPress={openSidebar} />
+              </View>
+              <View className="overflow-hidden rounded-[28px] border border-primary/10 bg-primary/10 p-5">
+                <View className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20" />
+                <Text tone="primary" variant="caption">Lộ trình tuần</Text>
+                <Text className="mt-1" variant="heading-lg">Giữ nhịp tập luyện ổn định</Text>
+                <Text className="mt-2" tone="muted" variant="body-sm">
+                  Theo dõi từng buổi tập, ngày nghỉ và gợi ý AI để duy trì cường độ hợp lý suốt tuần.
+                </Text>
 
-            <View className="mt-4 self-start rounded-full bg-card p-1">
-              <View className="flex-row gap-1">
-                <Button size="sm" title="Tuần" />
-                <Link href={ROUTES.monthlyPlan} asChild>
-                  <Button size="sm" title="Tháng" variant="ghost" />
-                </Link>
+                <View className="mt-4 self-start rounded-full bg-card p-1">
+                  <View className="flex-row gap-1">
+                    <Button size="sm" title="Tuần" />
+                    <Link href={ROUTES.monthlyPlan} asChild>
+                      <Button size="sm" title="Tháng" variant="ghost" />
+                    </Link>
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
-
-          <View className="gap-5 border-l-2 border-primary/20 pl-4">
-            {planItems.map((item) => (
-              <View key={item.id} className="relative">
+          }
+          renderItem={({ item }) => (
+            <View className="border-l-2 border-primary/20 pl-4 ml-1 mb-5">
+              <View className="relative">
                 <View className={`absolute -left-[23px] top-8 h-4 w-4 rounded-full border-4 border-background ${item.status === 'active' ? 'bg-primary' : item.status === 'completed' ? 'bg-success' : 'bg-muted'}`} />
-                <Card elevated className={`gap-3 ${statusStyles[item.status]}`}>
+                <Card elevated pressable className={`gap-3 ${statusStyles[item.status]}`}>
                   <View className="flex-row items-start justify-between gap-3">
                     <View className="flex-1 gap-1">
                       <Text tone={item.status === 'active' || item.status === 'insight' ? 'primary' : 'muted'} variant="caption">
@@ -71,9 +84,9 @@ const WeeklyPlanScreen = () => {
                   {item.status === 'active' ? <Button title="Chi tiết buổi tập" /> : null}
                 </Card>
               </View>
-            ))}
-          </View>
-        </View>
+            </View>
+          )}
+        />
       </ScreenState>
     </Screen>
   );
