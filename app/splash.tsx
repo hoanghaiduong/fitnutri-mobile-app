@@ -61,6 +61,13 @@ const SplashScreen = () => {
         }
       })
     );
+
+    // Fallback timer just in case reanimated drops the callback (common in dev mode)
+    const fallbackTimer = setTimeout(() => {
+      setAnimationFinished(true);
+    }, SPLASH_DURATION_MS + 200);
+
+    return () => clearTimeout(fallbackTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

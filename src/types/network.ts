@@ -8,6 +8,7 @@ export type ApiClientOptions<TBody = unknown> = {
   body?: TBody;
   requiresAuth?: boolean;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 };
 
 export type ApiResult<TData> = {

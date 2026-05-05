@@ -2,6 +2,7 @@ import { STORAGE_KEYS } from '@/constants/storage';
 import { storage } from '@/lib/storage';
 import { authApi } from '@/services/auth-api';
 import { tokenService } from '@/services/token-service';
+import { biometricService } from '@/services/biometric-service';
 import type { AuthProvider, AuthSession } from '@/types/auth';
 
 type LoginPayload = {
@@ -20,11 +21,26 @@ const defaultSession: AuthSession = {
 
 export const authService = {
   getSession: async (): Promise<AuthSession> => {
+    // Check if biometric is enabled
+    const isBio = await tokenService.isBiometricEnabled();
+    if (isBio) {
+      const authResult = await biometricService.authenticate('Xác thực để mở khóa FitNutri');
+      if (!authResult) {
+        // Biometric failed or canceled, lock the user out
+        return defaultSession;
+      }
+    }
+
     const session = (await storage.getItem<AuthSession>(STORAGE_KEYS.authSession)) ?? defaultSession;
 
-    if (session.tokens && tokenService.isExpired(session.tokens)) {
+    const tokens = await tokenService.getTokens();
+    if (tokens && tokenService.isExpired(tokens)) {
       const refreshed = await authService.refreshSession();
       return refreshed ?? defaultSession;
+    }
+
+    if (session.isAuthenticated && tokens) {
+       session.tokens = tokens;
     }
 
     return session;
@@ -39,21 +55,26 @@ export const authService = {
   },
   refreshSession: async (): Promise<AuthSession | null> => {
     const session = (await storage.getItem<AuthSession>(STORAGE_KEYS.authSession)) ?? null;
-    const refreshToken = session?.tokens?.refreshToken;
+    const tokens = await tokenService.getTokens();
+    const refreshToken = tokens?.refreshToken;
 
     if (!session || !refreshToken) {
       return null;
     }
 
-    const refreshedTokens = await authApi.refreshToken(refreshToken);
-    const nextSession: AuthSession = {
-      ...session,
-      tokens: refreshedTokens.data,
-    };
+    try {
+      const refreshedTokens = await authApi.refreshToken(refreshToken);
+      const nextSession: AuthSession = {
+        ...session,
+        tokens: refreshedTokens.data,
+      };
 
-    await storage.setItem(STORAGE_KEYS.authSession, nextSession);
-    await tokenService.saveTokens(refreshedTokens.data);
-    return nextSession;
+      await storage.setItem(STORAGE_KEYS.authSession, nextSession);
+      await tokenService.saveTokens(refreshedTokens.data);
+      return nextSession;
+    } catch {
+       return null;
+    }
   },
   completeProfile: async (): Promise<AuthSession> => {
     const current = await authService.getSession();
@@ -68,6 +89,7 @@ export const authService = {
     return next;
   },
   logout: async (): Promise<void> => {
+    await authApi.logout();
     await tokenService.clearTokens();
     await storage.removeItem(STORAGE_KEYS.authSession);
   },

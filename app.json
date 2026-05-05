@@ -16,7 +16,7 @@
           "faceIDPermission": "Cho phép $(PRODUCT_NAME) sử dụng Face ID."
         }
       ],
-     [
+      [
         "expo-font",
         {
           "fonts": [
@@ -26,7 +26,8 @@
             "./node_modules/@expo-google-fonts/inter/Inter_700Bold.ttf"
           ]
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "jsEngine": "hermes",
     "ios": {

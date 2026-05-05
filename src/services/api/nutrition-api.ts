@@ -1,7 +1,15 @@
 import { apiClient } from '@/lib/api-client';
 import type { ApiResponse } from '@/types/api';
 
-export const profileApi = {
+export const nutritionApi = {
+  getOptions: async (): Promise<ApiResponse<any>> => {
+    return apiClient.request<any>({
+      path: '/api/v3/nutrition/options',
+      method: 'GET',
+      requiresAuth: false,
+    });
+  },
+
   getProfile: async (): Promise<ApiResponse<any>> => {
     return apiClient.request<any>({
       path: '/api/v3/nutrition/profile',
@@ -19,27 +27,21 @@ export const profileApi = {
     });
   },
 
-  uploadAvatar: async (imageUri: string, mimeType: string, fileName: string): Promise<ApiResponse<any>> => {
-    const formData = new FormData();
-    formData.append('file', {
-      uri: imageUri,
-      type: mimeType,
-      name: fileName,
-    } as any);
-
+  generateRecommendation: async (payload: any): Promise<ApiResponse<any>> => {
     return apiClient.request<any>({
-      path: '/api/v3/users/me/avatar',
+      path: '/api/v3/nutrition/recommendation',
       method: 'POST',
-      body: formData,
+      body: payload,
       requiresAuth: true,
     });
   },
 
-  getNutritionOptions: async (): Promise<ApiResponse<any>> => {
+  generateRecommendationAgent: async (payload: any): Promise<ApiResponse<any>> => {
     return apiClient.request<any>({
-      path: '/api/v3/nutrition/options',
-      method: 'GET',
-      requiresAuth: false,
+      path: '/api/v3/nutrition/recommendation-agent',
+      method: 'POST',
+      body: payload,
+      requiresAuth: true,
     });
-  }
+  },
 };

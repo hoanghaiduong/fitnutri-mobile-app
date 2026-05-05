@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { View } from 'react-native';
+import { View, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState, useEffect } from 'react';
 
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { Button } from '@/ui/button';
@@ -9,10 +10,54 @@ import { Card } from '@/ui/card';
 import { Input } from '@/ui/input';
 import { Text } from '@/ui/text';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { TopBarMenu } from '@/components/topbar-menu';
+import { settingsApi } from '@/services/api/settings-api';
+import { tokenService } from '@/services/token-service';
+import { biometricService } from '@/services/biometric-service';
 
 const SecurityBody = () => {
   const { tokens } = useAppTheme();
+  
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [isHardwareSupported, setIsHardwareSupported] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const init = async () => {
+      const supported = await biometricService.isSupported();
+      setIsHardwareSupported(supported);
+      
+      const enabled = await tokenService.isBiometricEnabled();
+      setIsBiometricEnabled(enabled);
+      
+      setIsLoading(false);
+    };
+    init();
+  }, []);
+
+  const handleToggleBiometric = async (value: boolean) => {
+    if (value) {
+      const authResult = await biometricService.authenticate('Xác thực để bật mở khóa bằng Face ID / Vân tay');
+      if (!authResult) {
+         return; 
+      }
+    }
+    
+    setIsBiometricEnabled(value);
+    
+    try {
+      await settingsApi.updatePreferences({ biometricUnlockEnabled: value });
+      await tokenService.setBiometricEnabled(value);
+      
+      const currentTokens = await tokenService.getTokens();
+      if (currentTokens) {
+         await tokenService.saveTokens(currentTokens);
+      }
+    } catch (e) {
+      setIsBiometricEnabled(!value);
+      await tokenService.setBiometricEnabled(!value);
+      Alert.alert('Lỗi', 'Không thể lưu cài đặt. Vui lòng thử lại sau.');
+    }
+  };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: `rgb(${tokens.colors.background})` }}>
@@ -54,6 +99,23 @@ const SecurityBody = () => {
           <View className="mt-2">
             <Button title="Đổi mật khẩu" />
           </View>
+        </Card>
+
+        <Card elevated glass className="p-5 flex-row items-center justify-between rounded-[28px]">
+          <View className="flex-1 mr-4">
+            <Text variant="heading-sm" className="mb-1">Mở khóa bằng Face ID / vân tay</Text>
+            {!isHardwareSupported && !isLoading && (
+              <Text tone="muted" variant="caption">
+                Thiết bị của bạn không hỗ trợ hoặc chưa cài đặt sinh trắc học.
+              </Text>
+            )}
+          </View>
+          <Switch 
+            value={isBiometricEnabled}
+            onValueChange={handleToggleBiometric}
+            disabled={!isHardwareSupported || isLoading}
+            trackColor={{ false: '#CBD5E1', true: `rgb(${tokens.colors.primary})` }}
+          />
         </Card>
       </View>
     </SafeAreaView>

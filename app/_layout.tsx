@@ -5,6 +5,8 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppGlobalSidebar } from '@/components/app-global-sidebar';
+import { AppOfflineBanner } from '@/components/app-offline-banner';
+import { useNetworkMonitor } from '@/hooks/use-network-monitor';
 import { ThemeProvider } from '@/theme/theme-provider';
 
 export default function RootLayout() {
@@ -14,6 +16,8 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  useNetworkMonitor();
 
   // Don't render until fonts are ready
   if (!fontsLoaded) {
@@ -43,6 +47,7 @@ export default function RootLayout() {
             <Stack.Screen name="features/emerald-vitality" />
           </Stack>
           <AppGlobalSidebar />
+          <AppOfflineBanner />
         </>
       </ThemeProvider>
     </SafeAreaProvider>
