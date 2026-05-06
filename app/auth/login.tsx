@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Dimensions, Pressable, View, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
+import { Alert, Dimensions, InteractionManager, Pressable, View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
@@ -16,6 +16,7 @@ import Animated, {
 
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { ROUTES } from '@/constants/routes';
+import { getPostLoginRoute } from '@/features/auth/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppTheme } from '@/hooks/use-app-theme';
@@ -23,12 +24,79 @@ import { toRgb, toRgba } from '@/lib/color';
 import { Button } from '@/ui/button';
 import { Input } from '@/ui/input';
 import { Text } from '@/ui/text';
-import { Alert } from 'react-native';
-import { biometricService } from '@/services/biometric-service';
-import { tokenService } from '@/services/token-service';
-import { settingsApi } from '@/services/api/settings-api';
+import { biometricPreferenceService, type BiometricPreferenceResult } from '@/services/biometric-preference-service';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const BIOMETRIC_PROMPT_DELAY_MS = 300;
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitForAlertDismissal = async (): Promise<void> => {
+  await new Promise<void>((resolve) => {
+    InteractionManager.runAfterInteractions(() => resolve());
+  });
+  await wait(BIOMETRIC_PROMPT_DELAY_MS);
+};
+
+const askBiometricActivation = (): Promise<boolean> =>
+  new Promise((resolve) => {
+    let resolved = false;
+    const finish = (accepted: boolean) => {
+      if (resolved) {
+        return;
+      }
+
+      resolved = true;
+      resolve(accepted);
+    };
+
+    Alert.alert(
+      'Kích hoạt mở khóa nhanh',
+      'Bạn có muốn sử dụng Face ID / vân tay hoặc mật mã của máy để mở khóa nhanh trong những lần sau?',
+      [
+        { text: 'Để sau', style: 'cancel', onPress: () => finish(false) },
+        { text: 'Kích hoạt', onPress: () => finish(true) },
+      ],
+      { cancelable: true, onDismiss: () => finish(false) }
+    );
+  });
+
+const getBiometricFailureMessage = (result: Extract<BiometricPreferenceResult, { ok: false }>): string => {
+  if (result.reason === 'unsupported') {
+    return 'Thiết bị chưa sẵn sàng cho mở khóa nhanh. Vui lòng đặt mật mã máy hoặc cài Face ID / vân tay trong cài đặt hệ thống.';
+  }
+
+  if (result.reason === 'persist_failed') {
+    return 'Không thể lưu cài đặt mở khóa nhanh. Vui lòng thử lại sau.';
+  }
+
+  switch (result.authenticationError) {
+    case 'user_cancel':
+    case 'app_cancel':
+    case 'system_cancel':
+      return 'Bạn đã hủy xác thực nên app chưa bật mở khóa nhanh.';
+    case 'not_enrolled':
+      return 'Thiết bị chưa đặt mật mã máy hoặc chưa cài Face ID / vân tay. Hãy bật khóa màn hình trong cài đặt hệ thống trước.';
+    case 'lockout':
+      return 'Xác thực thiết bị đang bị khóa do thử sai nhiều lần. Hãy mở khóa thiết bị rồi thử lại.';
+    case 'not_available':
+    case 'passcode_not_set':
+      return 'Hệ điều hành chưa cho app dùng xác thực thiết bị. Hãy kiểm tra mật mã khóa màn hình rồi thử lại.';
+    case 'authentication_failed':
+    case 'timeout':
+    case 'unable_to_process':
+      return 'Không xác thực được bằng khóa máy. Vui lòng thử lại.';
+    default:
+      return 'Không mở được yêu cầu xác thực thiết bị. Vui lòng thử lại trong Bảo mật & Mật khẩu.';
+  }
+};
+
+const showBiometricActivationFailure = (result: Extract<BiometricPreferenceResult, { ok: false }>): Promise<void> =>
+  new Promise((resolve) => {
+    Alert.alert('Chưa bật được mở khóa nhanh', getBiometricFailureMessage(result), [
+      { text: 'OK', onPress: () => resolve() },
+    ]);
+  });
 
 const CustomCheckbox = ({ checked, onChange, label }: { checked: boolean, onChange: (v: boolean) => void, label: string }) => {
   const { tokens } = useAppTheme();
@@ -88,46 +156,32 @@ const LoginBody = () => {
     try {
       setSubmitting(true);
       setError(null);
-      await login({ email, password, name: email.split('@')[0], provider: 'password' });
+      const session = await login({ email, password, name: email.split('@')[0], provider: 'password' });
 
-      const supported = await biometricService.isSupported();
+      const supported = await biometricPreferenceService.isSupported();
       if (supported) {
-        const alreadyEnabled = await tokenService.isBiometricEnabled();
+        const alreadyEnabled = await biometricPreferenceService.isEnabled();
         if (!alreadyEnabled) {
-          await new Promise<void>((resolve) => {
-            Alert.alert(
-              'Kích hoạt sinh trắc học',
-              'Bạn có muốn sử dụng Face ID / Vân tay để mở khóa nhanh trong những lần sau?',
-              [
-                { text: 'Để sau', style: 'cancel', onPress: () => resolve() },
-                {
-                  text: 'Kích hoạt',
-                  onPress: async () => {
-                    const authResult = await biometricService.authenticate('Xác thực để bật mở khóa');
-                    if (authResult) {
-                      try {
-                        await settingsApi.updatePreferences({ biometricUnlockEnabled: true });
-                        await tokenService.setBiometricEnabled(true);
-                        const currentTokens = await tokenService.getTokens();
-                        if (currentTokens) {
-                          await tokenService.saveTokens(currentTokens);
-                        }
-                        toast('Thành công', 'Tính năng mở khóa bằng sinh trắc học đã được bật.', 'success');
-                      } catch {
-                        // silently fail
-                      }
-                    }
-                    resolve();
-                  }
-                }
-              ]
+          const wantsBiometricActivation = await askBiometricActivation();
+          if (wantsBiometricActivation) {
+            await waitForAlertDismissal();
+
+            const preferenceResult = await biometricPreferenceService.setEnabled(
+              true,
+              'Xác thực để bật mở khóa'
             );
-          });
+
+            if (preferenceResult.ok) {
+              toast('Thành công', 'Tính năng mở khóa nhanh bằng khóa máy đã được bật.', 'success');
+            } else {
+              await showBiometricActivationFailure(preferenceResult);
+            }
+          }
         }
       }
 
       toast('Đăng nhập thành công', 'Phiên làm việc đã khởi tạo.', 'success');
-      router.replace(ROUTES.profileSetup1);
+      router.replace(getPostLoginRoute(session));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đăng nhập thất bại.');
     } finally {
@@ -138,9 +192,9 @@ const LoginBody = () => {
   const handleGoogleLogin = async () => {
     try {
       setError(null);
-      await login({ provider: 'google', name: 'Google User' });
+      const session = await login({ provider: 'google', name: 'Google User' });
       toast('Đăng nhập Google thành công', 'Kết nối an toàn.', 'success');
-      router.replace(ROUTES.profileSetup1);
+      router.replace(getPostLoginRoute(session));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể đăng nhập Google.');
     }

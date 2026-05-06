@@ -1,7 +1,9 @@
 import { apiClient } from '@/lib/api-client';
+import { isProfileCompletedFromApi } from '@/services/auth-profile-completion';
+import { profileApi } from '@/services/api/profile-api';
 import { tokenService } from '@/services/token-service';
 import type { ApiResponse } from '@/types/api';
-import type { AuthSession, TokenPair } from '@/types/auth';
+import type { AuthSession, AuthUser, TokenPair } from '@/types/auth';
 
 type LoginPayload = {
   username?: string;
@@ -35,6 +37,39 @@ type ResetPasswordPayload = {
   newPassword: string;
 };
 
+const unwrapApiData = <T>(responseData: any): T => {
+  return (responseData?.data ?? responseData) as T;
+};
+
+const readNutritionProfile = async (): Promise<Record<string, unknown> | null> => {
+  try {
+    const profileResponse = await profileApi.getProfile();
+    return unwrapApiData<Record<string, unknown>>(profileResponse.data);
+  } catch {
+    return null;
+  }
+};
+
+const buildAuthUser = (
+  userData: Record<string, any>,
+  nutritionProfile: Record<string, unknown> | null
+): AuthUser => {
+  const username = userData.username || '';
+  const email = userData.email || username;
+  const nestedProfile = userData.profile && typeof userData.profile === 'object'
+    ? userData.profile
+    : null;
+
+  return {
+    id: userData.id,
+    username,
+    email,
+    phone: userData.phone ?? null,
+    name: userData.fullName || userData.username || email,
+    isProfileCompleted: isProfileCompletedFromApi(userData, nestedProfile, nutritionProfile),
+  };
+};
+
 export const authApi = {
   login: async (payload: LoginPayload): Promise<ApiResponse<AuthSession>> => {
     // Determine the username to send (could be email or phone based on UI mapping)
@@ -47,7 +82,7 @@ export const authApi = {
       requiresAuth: false 
     });
 
-    const responseData = response.data.data || response.data;
+    const responseData = unwrapApiData<Record<string, any>>(response.data);
     
     const tokens: TokenPair = {
       accessToken: responseData.accessToken || responseData.access_token || '',
@@ -58,17 +93,17 @@ export const authApi = {
     await tokenService.saveTokens(tokens);
 
     // Fetch user details after login
-    const meResponse = await authApi.getMe();
+    const [meResponse, nutritionProfile] = await Promise.all([
+      authApi.getMe(),
+      readNutritionProfile(),
+    ]);
+
+    const user = buildAuthUser(meResponse.data, nutritionProfile);
 
     return {
       data: {
         isAuthenticated: true,
-        user: {
-          id: meResponse.data.id,
-          email: meResponse.data.email,
-          name: meResponse.data.fullName || meResponse.data.username,
-          isProfileCompleted: !!meResponse.data.targetGoal, // Assume profile is completed if target goal exists
-        },
+        user,
         tokens,
       },
       message: 'Login successful.',
@@ -91,7 +126,10 @@ export const authApi = {
       method: 'GET',
       requiresAuth: true,
     });
-    return response;
+    return {
+      data: unwrapApiData(response.data),
+      message: response.data?.message,
+    };
   },
 
   requestOtp: async (payload: OtpRequestPayload): Promise<ApiResponse<any>> => {

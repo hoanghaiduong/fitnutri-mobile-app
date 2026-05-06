@@ -7,8 +7,12 @@ export const useAuthBootstrap = (): boolean => {
   const hydrated = useAuthStore((state) => state.hydrated);
 
   useEffect(() => {
+    if (hydrated) {
+      return;
+    }
+
     void hydrate();
-  }, [hydrate]);
+  }, [hydrate, hydrated]);
 
   return hydrated;
 };

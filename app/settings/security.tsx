@@ -10,53 +10,87 @@ import { Card } from '@/ui/card';
 import { Input } from '@/ui/input';
 import { Text } from '@/ui/text';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { settingsApi } from '@/services/api/settings-api';
-import { tokenService } from '@/services/token-service';
-import { biometricService } from '@/services/biometric-service';
+import { biometricPreferenceService, type BiometricPreferenceResult } from '@/services/biometric-preference-service';
+
+const getBiometricFailureMessage = (result: Extract<BiometricPreferenceResult, { ok: false }>): string => {
+  if (result.reason === 'unsupported') {
+    return 'Thiết bị của bạn chưa đặt mật mã máy hoặc chưa cài đặt Face ID / vân tay.';
+  }
+
+  if (result.reason === 'persist_failed') {
+    return 'Không thể lưu cài đặt. Vui lòng thử lại sau.';
+  }
+
+  switch (result.authenticationError) {
+    case 'user_cancel':
+    case 'app_cancel':
+    case 'system_cancel':
+      return 'Bạn đã hủy xác thực nên app chưa bật mở khóa nhanh.';
+    case 'not_enrolled':
+      return 'Thiết bị chưa đặt mật mã máy hoặc chưa cài Face ID / vân tay. Hãy bật khóa màn hình trong cài đặt hệ thống trước.';
+    case 'lockout':
+      return 'Xác thực thiết bị đang bị khóa do thử sai nhiều lần. Hãy mở khóa thiết bị rồi thử lại.';
+    case 'not_available':
+    case 'passcode_not_set':
+      return 'Hệ điều hành chưa cho app dùng xác thực thiết bị. Hãy kiểm tra mật mã khóa màn hình rồi thử lại.';
+    case 'authentication_failed':
+    case 'timeout':
+    case 'unable_to_process':
+      return 'Không xác thực được bằng khóa máy. Vui lòng thử lại.';
+    default:
+      return 'Không mở được yêu cầu xác thực thiết bị. Vui lòng thử lại.';
+  }
+};
 
 const SecurityBody = () => {
   const { tokens } = useAppTheme();
   
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
-  const [isHardwareSupported, setIsHardwareSupported] = useState(false);
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const init = async () => {
-      const supported = await biometricService.isSupported();
-      setIsHardwareSupported(supported);
-      
-      const enabled = await tokenService.isBiometricEnabled();
-      setIsBiometricEnabled(enabled);
-      
-      setIsLoading(false);
+      try {
+        const [supported, enabled] = await Promise.all([
+          biometricPreferenceService.isSupported(),
+          biometricPreferenceService.isEnabled(),
+        ]);
+
+        if (!mounted) {
+          return;
+        }
+
+        setIsBiometricSupported(supported);
+        setIsBiometricEnabled(enabled);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
     };
-    init();
+
+    void init();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleToggleBiometric = async (value: boolean) => {
-    if (value) {
-      const authResult = await biometricService.authenticate('Xác thực để bật mở khóa bằng Face ID / Vân tay');
-      if (!authResult) {
-         return; 
-      }
+    const result = await biometricPreferenceService.setEnabled(
+      value,
+      'Xác thực để bật mở khóa bằng Face ID / vân tay / mật mã'
+    );
+
+    if (result.ok) {
+      setIsBiometricEnabled(result.enabled);
+      return;
     }
-    
-    setIsBiometricEnabled(value);
-    
-    try {
-      await settingsApi.updatePreferences({ biometricUnlockEnabled: value });
-      await tokenService.setBiometricEnabled(value);
-      
-      const currentTokens = await tokenService.getTokens();
-      if (currentTokens) {
-         await tokenService.saveTokens(currentTokens);
-      }
-    } catch (e) {
-      setIsBiometricEnabled(!value);
-      await tokenService.setBiometricEnabled(!value);
-      Alert.alert('Lỗi', 'Không thể lưu cài đặt. Vui lòng thử lại sau.');
-    }
+
+    Alert.alert('Chưa bật được', getBiometricFailureMessage(result));
   };
 
   return (
@@ -103,17 +137,17 @@ const SecurityBody = () => {
 
         <Card elevated glass className="p-5 flex-row items-center justify-between rounded-[28px]">
           <View className="flex-1 mr-4">
-            <Text variant="heading-sm" className="mb-1">Mở khóa bằng Face ID / vân tay</Text>
-            {!isHardwareSupported && !isLoading && (
+            <Text variant="body-md" className="mb-1 font-semibold">Mở khóa bằng Face ID / vân tay / mật mã</Text>
+            {!isBiometricSupported && !isLoading && (
               <Text tone="muted" variant="caption">
-                Thiết bị của bạn không hỗ trợ hoặc chưa cài đặt sinh trắc học.
+                Thiết bị của bạn chưa đặt mật mã máy hoặc chưa cài đặt Face ID / vân tay.
               </Text>
             )}
           </View>
           <Switch 
             value={isBiometricEnabled}
             onValueChange={handleToggleBiometric}
-            disabled={!isHardwareSupported || isLoading}
+            disabled={isLoading}
             trackColor={{ false: '#CBD5E1', true: `rgb(${tokens.colors.primary})` }}
           />
         </Card>

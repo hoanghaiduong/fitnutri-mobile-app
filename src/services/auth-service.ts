@@ -13,37 +13,57 @@ type LoginPayload = {
   provider?: AuthProvider;
 };
 
+type GetSessionOptions = {
+  requireBiometricUnlock?: boolean;
+};
+
 const defaultSession: AuthSession = {
   isAuthenticated: false,
   user: null,
   tokens: null,
 };
 
+let biometricUnlockGranted = false;
+
+const unlockWithBiometricsIfNeeded = async (required: boolean): Promise<boolean> => {
+  if (!required || biometricUnlockGranted) {
+    return true;
+  }
+
+  const isBiometricEnabled = await tokenService.isBiometricEnabled();
+  if (!isBiometricEnabled) {
+    return true;
+  }
+
+  const authenticated = await biometricService.authenticate('Xác thực để mở khóa FitNutri');
+  biometricUnlockGranted = authenticated;
+  return authenticated;
+};
+
 export const authService = {
-  getSession: async (): Promise<AuthSession> => {
-    // Check if biometric is enabled
-    const isBio = await tokenService.isBiometricEnabled();
-    if (isBio) {
-      const authResult = await biometricService.authenticate('Xác thực để mở khóa FitNutri');
-      if (!authResult) {
-        // Biometric failed or canceled, lock the user out
-        return defaultSession;
-      }
+  getSession: async (options: GetSessionOptions = {}): Promise<AuthSession> => {
+    const requireBiometricUnlock = options.requireBiometricUnlock ?? true;
+    const session = (await storage.getItem<AuthSession>(STORAGE_KEYS.authSession)) ?? defaultSession;
+    if (!session.isAuthenticated) {
+      return defaultSession;
     }
 
-    const session = (await storage.getItem<AuthSession>(STORAGE_KEYS.authSession)) ?? defaultSession;
-
     const tokens = await tokenService.getTokens();
+    if (!tokens) {
+      return defaultSession;
+    }
+
+    const unlocked = await unlockWithBiometricsIfNeeded(requireBiometricUnlock);
+    if (!unlocked) {
+      return defaultSession;
+    }
+
     if (tokens && tokenService.isExpired(tokens)) {
       const refreshed = await authService.refreshSession();
       return refreshed ?? defaultSession;
     }
 
-    if (session.isAuthenticated && tokens) {
-       session.tokens = tokens;
-    }
-
-    return session;
+    return { ...session, tokens };
   },
   login: async (payload: LoginPayload): Promise<AuthSession> => {
     const response = await authApi.login(payload);
@@ -51,6 +71,7 @@ export const authService = {
     if (response.data.tokens) {
       await tokenService.saveTokens(response.data.tokens);
     }
+    biometricUnlockGranted = true;
     return response.data;
   },
   refreshSession: async (): Promise<AuthSession | null> => {
@@ -77,7 +98,7 @@ export const authService = {
     }
   },
   completeProfile: async (): Promise<AuthSession> => {
-    const current = await authService.getSession();
+    const current = await authService.getSession({ requireBiometricUnlock: false });
     const next: AuthSession = {
       isAuthenticated: true,
       user: current.user
@@ -92,5 +113,6 @@ export const authService = {
     await authApi.logout();
     await tokenService.clearTokens();
     await storage.removeItem(STORAGE_KEYS.authSession);
+    biometricUnlockGranted = false;
   },
 };

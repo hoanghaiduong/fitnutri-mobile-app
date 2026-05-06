@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 
 import { ROUTES } from '@/constants/routes';
 import { type OtpIntent } from '@/features/auth/constants';
+import { getPostLoginRoute } from '@/features/auth/navigation';
 import { otpSchema, type OtpFormValues } from '@/features/auth/schema';
 import { useToast } from '@/hooks/use-toast';
 import { authApi } from '@/services/auth-api';
@@ -34,9 +35,9 @@ export const useOtpForm = ({ mode, target }: UseOtpFormOptions) => {
 
     if (mode === 'phone-login') {
       const phone = normalizePhone(target);
-      await login({ phone, provider: 'phone' });
+      const session = await login({ phone, provider: 'phone' });
       toast('Đăng nhập thành công', 'Số điện thoại của bạn đã được xác minh.', 'success');
-      router.replace(ROUTES.profileSetup1);
+      router.replace(getPostLoginRoute(session));
       return;
     }
 
@@ -49,9 +50,9 @@ export const useOtpForm = ({ mode, target }: UseOtpFormOptions) => {
     }
 
     const email = target && target.includes('@') ? target : 'debug@fitnutri.app';
-    await login({ email, password: 'otp-recovery', provider: 'password', name: email.split('@')[0] });
+    const session = await login({ email, password: 'otp-recovery', provider: 'password', name: email.split('@')[0] });
     toast('Xác minh thành công', 'Bạn đã được đăng nhập tạm thời để tiếp tục trong ứng dụng.', 'success');
-    router.replace(ROUTES.profileSetup1);
+    router.replace(getPostLoginRoute(session));
   });
 
   return { form, onSubmit, submitting: form.formState.isSubmitting };

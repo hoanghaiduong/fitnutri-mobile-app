@@ -11,7 +11,7 @@ function walkDir(dir, callback) {
       callback(dirPath);
     }
   });
-}
+} 
 
 let count = 0;
 walkDir('.', (file) => {

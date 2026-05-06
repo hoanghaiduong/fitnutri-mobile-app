@@ -1,9 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Controller } from 'react-hook-form';
-import * as LocalAuthentication from 'expo-local-authentication';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Switch, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppErrorBoundary } from '@/components/app-error-boundary';
@@ -12,7 +10,6 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { useSettingsForm } from '@/features/settings/hooks/use-settings-form';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/store/auth-store';
-import { useSettingsStore } from '@/store/settings-store';
 import { useUIStore } from '@/store/ui-store';
 import { Avatar } from '@/ui/avatar';
 import { Badge } from '@/ui/badge';
@@ -36,74 +33,12 @@ const SettingsRow = ({ icon, label, value = '', onPress = () => { }, rightIcon =
   </Pressable>
 );
 
-const SettingsSwitchRow = ({ icon, label, value, onValueChange, color = '#64748B' }: any) => {
-  const { tokens } = useAppTheme();
-  return (
-    <View className="flex-row items-center justify-between py-3.5 border-b border-border last:border-b-0">
-      <View className="flex-row items-center gap-3.5">
-        <View className="w-9 h-9 items-center justify-center rounded-full" style={{ backgroundColor: `${color}25` }}>
-          <Ionicons name={icon} size={18} color={color} />
-        </View>
-        <Text variant="body-md" className="font-medium">{label}</Text>
-      </View>
-      <Switch 
-        value={value} 
-        onValueChange={onValueChange} 
-        trackColor={{ true: `rgb(${tokens.colors.primary})`, false: `rgb(${tokens.colors.border})` }}
-      />
-    </View>
-  );
-};
-
 const SettingsBody = () => {
   const { form, loading, onSubmit, submitting } = useSettingsForm();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const { tokens } = useAppTheme();
   const openSidebar = useUIStore((state) => state.openSidebar);
-
-  
-  const biometricsEnabled = useSettingsStore((state) => state.biometricsEnabled);
-  const setBiometrics = useSettingsStore((state) => state.setBiometrics);
-  const [bioType, setBioType] = useState('Sinh trắc học');
-  const [bioIcon, setBioIcon] = useState('finger-print-outline');
-
-  useEffect(() => {
-    (async () => {
-      const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-      if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-        setBioType('Face ID');
-        setBioIcon('scan-outline');
-      } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-        setBioType('Vân tay');
-        setBioIcon('finger-print-outline');
-      }
-    })();
-  }, []);
-
-  const handleBiometricsToggle = async (value: boolean) => {
-    if (!value) {
-      setBiometrics(false);
-      return;
-    }
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-    
-    if (!hasHardware || !isEnrolled) {
-      Alert.alert('Không khả dụng', 'Thiết bị của bạn không hỗ trợ hoặc chưa cài đặt vân tay / Face ID.');
-      return;
-    }
-
-    const { success } = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Xác thực để bật đăng nhập nhanh',
-      fallbackLabel: 'Sử dụng mật khẩu',
-      cancelLabel: 'Hủy',
-    });
-
-    if (success) {
-      setBiometrics(true);
-    }
-  };
 
   if (loading) {
     return (
@@ -177,7 +112,6 @@ const SettingsBody = () => {
               )}
             />
             <SettingsRow icon="mail-outline" label="Email" value={user?.email || ''} rightIcon="" color="#3B82F6" />
-            <SettingsSwitchRow icon={bioIcon} label={`Đăng nhập bằng ${bioType}`} value={biometricsEnabled} onValueChange={handleBiometricsToggle} color="#10B981" />
             <SettingsRow icon="shield-checkmark-outline" label="Bảo mật & Mật khẩu" onPress={() => router.push('/settings/security')} color="#8B5CF6" />
           </Card>
         </View>

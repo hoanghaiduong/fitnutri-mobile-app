@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { useForm } from 'react-hook-form';
 
-import { ROUTES } from '@/constants/routes';
+import { getPostLoginRoute } from '@/features/auth/navigation';
 import { loginSchema, type LoginFormValues } from '@/features/auth/schema';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth-store';
@@ -20,13 +20,13 @@ export const useLoginForm = () => {
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await login({
+    const session = await login({
       email: values.email,
       password: values.password,
       name: values.email.split('@')[0],
     });
     toast('Đăng nhập thành công', 'Phiên làm việc đã được khởi tạo.', 'success');
-    router.replace(ROUTES.profileSetup1);
+    router.replace(getPostLoginRoute(session));
   });
 
   return { form, onSubmit, submitting: form.formState.isSubmitting };

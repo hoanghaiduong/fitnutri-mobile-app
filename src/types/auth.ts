@@ -1,8 +1,11 @@
 export type AuthProvider = 'password' | 'google' | 'facebook' | 'apple' | 'phone';
 
 export type AuthUser = {
+  id?: number | string;
+  username?: string;
   email: string;
   name?: string;
+  phone?: string | null;
   isProfileCompleted: boolean;
 };
 
